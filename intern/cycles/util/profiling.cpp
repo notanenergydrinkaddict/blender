@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
+#include <chrono>
+
 #include "util/profiling.h"
 #include "util/algorithm.h"
 #include "util/foreach.h"
