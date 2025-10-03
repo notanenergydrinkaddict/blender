@@ -1,0 +1,330 @@
+name: Blender
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+        include:
+          - name: win32
+            os: windows-latest
+            arch: amd64
+            output_ext: exe
+    env:
+      build_dir: ${{ github.workspace }}/build
+      origin_url: https://projects.blender.org/blender
+      src_repo: notanenergydrinkaddict/blender
+      ext_data_repo: notanenergydrinkaddict/data
+      config: Release
+      OptixVer: 7.3.0
+      CudaVer: 12.9.0
+    permissions:
+      contents: write
+    steps:
+
+    - name: Setup 7zip zstd
+      run: |
+        $f = "7z25.01-zstd-x64.exe"
+        curl -fLJO https://github.com/mcmilk/7-Zip-zstd/releases/download/v25.01-v1.5.7-R1/$f
+        & ./$f /S
+        $pf = "C:\Program Files"
+        mv "$pf/7-Zip" "$pf/7-Zip1"
+        mv "$pf/7-Zip-Zstandard" "$pf/7-Zip"
+        # check
+        7z i
+        $p = "C:\Program Files\7-Zip"
+        $o = "a.7z"
+        $t = "test"
+        # test
+        7z a -m0=bcj -m1=zstd -mx11 -mtm- $o $p
+        7z x $o "-o$t"
+        ls $t
+
+    - name: Checkout
+      uses: actions/checkout@main
+    - name: Get version
+      run: |
+        function Get-BlenderVersion
+        {
+            param ([string]$SourceDir)
+            $headerPath = Join-Path $SourceDir "source/blender/blenkernel/BKE_blender_version.h"
+            if (-not (Test-Path $headerPath)) {
+                throw "Header file not found: $headerPath"
+            }
+            $contents = Get-Content $headerPath -Raw
+            # Extract values using regex
+            if ($contents -match '#define\s+BLENDER_VERSION\s+(\d+)') {
+                $versionRaw = $matches[1]
+            } else {
+                throw "Version parsing failed for BLENDER_VERSION"
+            }
+            if ($contents -match '#define\s+BLENDER_VERSION_PATCH\s+(\d+)') {
+                $patch = $matches[1]
+            } else {
+                throw "Version parsing failed for BLENDER_VERSION_PATCH"
+            }
+            if ($contents -match '#define\s+BLENDER_VERSION_CYCLE\s+([A-Za-z]+)') {
+                $cycle = $matches[1]
+            } else {
+                throw "Version parsing failed for BLENDER_VERSION_CYCLE"
+            }
+            if ($contents -match '#define\s+BLENDER_VERSION_SUFFIX\s+([A-Za-z0-9]+)') {
+                $suffix = $matches[1]
+            } else {
+                $suffix = ""
+            }
+            $major = [int]($versionRaw / 100)
+            $minor = [int]($versionRaw % 100)
+            return @{
+                BLENDER_VERSION        = "$major.$minor"
+                BLENDER_VERSION_MAJOR  = $major
+                BLENDER_VERSION_MINOR  = $minor
+                BLENDER_VERSION_PATCH  = $patch
+                BLENDER_VERSION_CYCLE  = $cycle
+                BLENDER_VERSION_SUFFIX = $suffix
+            }
+        }
+        $result = Get-BlenderVersion -SourceDir "${{ github.workspace }}"
+        $dir = Split-Path -Path $pwd -Leaf
+        $ver = "v$($result.BLENDER_VERSION)-$($result.BLENDER_VERSION_PATCH)-${{ env.config }}-$(git rev-parse --short=8 HEAD)-${{ matrix.name }}-${{ matrix.arch }}"
+        $bv = "$dir-$ver"
+        echo "Version: $($result.BLENDER_VERSION)"
+        echo "Major:   $($result.BLENDER_VERSION_MAJOR)"
+        echo "Minor:   $($result.BLENDER_VERSION_MINOR)"
+        echo "Patch:   $($result.BLENDER_VERSION_PATCH)"
+        echo "Cycle:   $($result.BLENDER_VERSION_CYCLE)"
+        echo "build_ver=$bv" >> ${{ github.env }}
+        echo "ver=$ver" >> ${{ github.env }}
+        echo "final_zip_path=${{ github.workspace }}\$bv.${{ matrix.output_ext }}" >> ${{ github.env }}
+        $tag = "$($result.BLENDER_VERSION)-data"
+        echo "BLENDER_VERSION=$($result.BLENDER_VERSION)" >> ${{ github.env }}
+        echo "BLENDER_VERSION_MAJOR=$($result.BLENDER_VERSION_MAJOR)" >> ${{ github.env }}
+        echo "BLENDER_VERSION_MINOR=$($result.BLENDER_VERSION_MINOR)" >> ${{ github.env }}
+        echo "BLENDER_VERSION_PATCH=$($result.BLENDER_VERSION_PATCH)" >> ${{ github.env }}
+        echo "BLENDER_VERSION_CYCLE=$($result.BLENDER_VERSION_CYCLE)" >> ${{ github.env }}
+        echo "TAG_NAME=$tag" >> ${{ github.env }}
+        echo "btag=blender-v$($result.BLENDER_VERSION)-release" >> ${{ github.env }}
+
+    - name: Evaluate post env variables
+      run: |
+        $m = "${{ runner.os }}-${{ matrix.arch }}"
+        echo "timestamp_file=${{ env.build_dir }}\timestamps.txt" >> ${{ github.env }}
+        echo "lib_file=${{ env.tag_name }}-lib-$m.7z" >> ${{ github.env }}
+        echo "lfs_file=${{ env.tag_name }}-lfs.7z" >> ${{ github.env }}
+        echo "build_file=${{ env.tag_name }}-build-$m.7z" >> ${{ github.env }}
+
+    - name: Check if LFS and previous build tag exists
+      id: check_tag
+      run: |
+        $result = git ls-remote --tags origin "refs/tags/${{ env.TAG_NAME }}"
+        $result2 = git ls-remote --tags origin "refs/tags/${{ env.ver }}"
+        if ($result)
+        {
+          echo "exists=true" >> ${{ github.output }}
+        }
+        else
+        {
+          echo "exists=false" >> ${{ github.output }}
+          echo "cache_hit=false" >> ${{ github.env }}
+        }
+        if ($result2)
+        {
+          echo "::warning title=Existing tag::This build already has an existing tag! Build will not be processed."
+          echo "built_guard=true" >> ${{ github.env }}
+        }
+        else
+        {
+          echo "built_guard=false" >> ${{ github.env }}
+        }
+
+    - name: Download lib from cache (tag)
+      if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'true' || github.repository != env.src_repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release download ${{ env.TAG_NAME }} -R ${{ env.src_repo }} -p *.7z
+        7z x *.7z -y
+        rm *.7z
+
+    - name: Manual clone lib
+      if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
+      working-directory: lib
+      run: |
+        $folder = "windows_x64"
+        rm $folder
+        git clone https://projects.blender.org/NotAnEnergyDrinkAddict/lib-windows_x64.git -b ${{ env.btag }} --no-tags --single-branch --depth 1 $folder
+        # Remove .git folder to save archive space
+        # ls $folder
+        Remove-Item -Path $folder/.git/* -Recurse -Force
+
+    - name: Set up LFS
+      if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
+      run: |
+        # GitHub mirror/fork don't have this info, so set it up here
+        $origin_name = "origin_blender"
+        git remote add $origin_name ${{ env.origin_url }}/blender.git
+        git fetch --no-tags $origin_name ${{ env.btag }}
+        git lfs pull $origin_name
+
+    - name: Create LFS archive
+      if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
+      run: |
+        $lfsList = "lfs.txt"
+        $lfsFiles = git lfs ls-files -n
+        if ($lfsFiles.Count -gt 0)
+        {
+            $lfsFiles | Out-File -Encoding utf8 -Append $lfsList
+        }
+        7z a -spf -m0=zstd -mx11 -mtm- `
+        ${{ env.lfs_file }} `
+        "@$lfsList"
+        7z a -m0=bcj -m1=zstd -mx11 -mtm- `
+        ${{ env.lib_file }} `
+        "lib"
+
+    - name: Upload LFS archive
+      if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ env.TAG_NAME }}" `
+        "${{ env.lfs_file }}" `
+        "${{ env.lib_file }}" `
+        --target "${{ GITHUB.SHA }}" -t "${{ env.TAG_NAME }}" `
+        --prerelease
+
+    - name: Setup Optix SDK
+      if: env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $pf = "NVIDIA-OptiX-SDK"
+        $f = "$pf-${{ env.OptixVer }}-win64.exe"
+        $out = "$env:PROGRAMDATA/NVIDIA Corporation/OptiX SDK ${{ env.OptixVer }}"
+        echo $out
+        gh release download "$pf" -R ${{ env.ext_data_repo }} -p "$f"
+        7z x $f -y "-o$out"
+        rm $f
+        ls $out
+
+    - name: Restore source timestamps on cache hit
+      if: env.built_guard == 'false'
+      run: |
+        if (Test-Path "${{ env.timestamp_file }}") {
+          $timestampFile = Convert-Path "${{ env.timestamp_file }}"
+          echo "Restoring timestamps from cache..."
+          $restored = 0
+          $skipped = 0
+          $missing = 0
+          Get-Content $timestampFile | ForEach-Object {
+            $parts = $_ -split '\|', 3
+            if ($parts.Count -eq 3) {
+              $filePath = Join-Path "${{ github.workspace }}" $parts[0]
+              $timestamp = [DateTime]::Parse($parts[1])
+              $cachedHash = $parts[2]
+              
+              if (Test-Path $filePath) {
+                # ignore cache file
+                if ($filePath -ine $timestampFile) {
+                  $currentHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash
+                }
+                if ($currentHash -eq $cachedHash) {
+                  (Get-Item $filePath).LastWriteTime = $timestamp
+                  $restored++
+                } else {
+                  $skipped++
+                }
+              } else {
+                $missing++
+              }
+            }
+          }
+          echo "Restored timestamps for $restored files ($skipped modified, $missing not found)"
+          echo "cache_hit=true" >> ${{ github.env }}
+        } else {
+          echo "::warning title=Missing timestamp cache::No timestamp file found in cache"
+          echo "cache_hit=false" >> ${{ github.env }}
+        }
+
+    - if: 0
+      run: cat "${{ env.timestamp_file }}"
+
+    - name: CMake Generate
+      if: env.cache_hit != 'true' && env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
+      run: |
+        cmake `
+        -Wno-dev -G "Visual Studio 17 2022" `
+        -T ClangCL `
+        -S . -B ${{ env.build_dir }} `
+        -DWITH_WINDOWS_EXTERNAL_MANIFEST=ON `
+        -DWITH_CLANG=ON
+
+    - name: CMake build
+      if: env.built_guard == 'false'
+      run: |
+        cmake --build ${{ env.build_dir }} --target INSTALL `
+        --config ${{ env.config }} -j $env:NUMBER_OF_PROCESSORS
+
+    - name: Zip
+      if: env.built_guard == 'false'
+      run: |
+        mv "${{ env.build_dir }}\bin\${{ env.config }}" "${{ env.build_ver }}"
+        # Delete all pdb, lib linking files
+        # PDB would be kept but apparently pdbstrip isn't a thing in lld-link?
+        Remove-Item -Path "${{ env.build_ver }}" -Recurse -Include *.pdb,*.lib
+        7z a -mx9 -mtm- -sfx"C:\Program Files\7-Zip\7z.sfx" "${{ env.final_zip_path }}" "${{ env.build_ver }}"
+
+    - name: Upload
+      if: env.built_guard == 'false'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "${{ env.ver }}" `
+        "${{ env.final_zip_path }}" `
+        --target "${{ GITHUB.SHA }}" -t "${{ env.ver }}" `
+        --prerelease
+
+    - name: Save source timestamps before caching
+      if: env.built_guard == 'false'
+      run: |
+        echo "" > "${{ env.timestamp_file }}"
+        $timestampFile = Convert-Path "${{ env.timestamp_file }}"
+        rm "${{ env.timestamp_file }}"
+        Get-ChildItem -Path `
+        "${{ github.workspace }}/assets", `
+        "${{ github.workspace }}/extern", `
+        "${{ github.workspace }}/intern", `
+        "${{ github.workspace }}/source", `
+        "${{ github.workspace }}/locale", `
+        "${{ github.workspace }}/release", `
+        "${{ github.workspace }}/lib" `
+        -Recurse -File | Where-Object {
+          $_.FullName -ne "$timestampFile"
+        } | ForEach-Object {
+          $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
+          $lastWrite = $_.LastWriteTime.ToString("o")
+          $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+          "$relativePath|$lastWrite|$hash"
+        } | Out-File -Encoding utf8 "$timestampFile"
+
+    - name: Cache build files
+      if: env.built_guard == 'false'
+      # must keep timestamp
+      run: 7z a -m0=bcj -m1=zstd -mx11 ${{ env.build_file }} build
+
+    - name: Upload build files
+      if: env.built_guard == 'false'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" "${{ env.timestamp_file }}" --clobber
