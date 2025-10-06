@@ -784,6 +784,11 @@ function(add_check_c_compiler_flag_impl
 
   include(CheckCCompilerFlag)
 
+  if(MSVC_CLANG)
+    # message(STATUS "(Is MSVC_CLANG) Using CFLAG: ${_FLAG}")
+    set(${_CFLAGS} "${${_CFLAGS}} ${_FLAG}" PARENT_SCOPE)
+    return()
+  endif()
   check_c_compiler_flag("${_FLAG}" "${_CACHE_VAR}")
   if(${_CACHE_VAR})
     # message(STATUS "Using CFLAG: ${_FLAG}")
@@ -800,6 +805,12 @@ function(add_check_cxx_compiler_flag_impl
   )
 
   include(CheckCXXCompilerFlag)
+
+  if(MSVC_CLANG)
+    # message(STATUS "(Is MSVC_CLANG) Using CXXFLAG: ${_FLAG}")
+    set(${_CXXFLAGS} "${${_CXXFLAGS}} ${_FLAG}" PARENT_SCOPE)
+    return()
+  endif()
 
   check_cxx_compiler_flag("${_FLAG}" "${_CACHE_VAR}")
   if(${_CACHE_VAR})
