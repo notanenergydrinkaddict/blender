@@ -32,6 +32,14 @@ jobs:
     permissions:
       contents: write
     steps:
+
+    - name: Setup 7zip zstd
+      run: |
+        $f = "Codecs-x64.7z"
+        curl -fLJO https://github.com/mcmilk/7-Zip-zstd/releases/latest/download/$f
+        7z x $f "-oC:\Program Files\7-Zip\Codecs"
+        7z i
+
     - name: Checkout
       uses: actions/checkout@main
 
@@ -303,7 +311,7 @@ jobs:
     - name: Cache build files
       if: env.built_guard == 'false'
       # must keep timestamp
-      run: 7z a -mx9 ${{ env.build_file }} build
+      run: 7z a -m0=bcj -m1=zstd -mx11 ${{ env.build_file }} build
 
     - name: Upload build files
       if: env.built_guard == 'false'
