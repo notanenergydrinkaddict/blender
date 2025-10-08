@@ -41,10 +41,12 @@ jobs:
         $pf = "C:\Program Files"
         mv "$pf/7-Zip" "$pf/7-Zip1"
         mv "$pf/7-Zip-Zstandard" "$pf/7-Zip"
+        # check
         7z i
         $p = "C:\Program Files\7-Zip"
         $o = "a.7z"
         $t = "test"
+        # test
         7z a -m0=bcj -m1=zstd -mx11 -mtm- $o $p
         7z x $o "-o$t"
         ls $t
