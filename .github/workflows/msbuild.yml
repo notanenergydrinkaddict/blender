@@ -165,7 +165,10 @@ jobs:
       if: steps.cache-primes.outputs.cache-hit == 'false' && env.built_guard == 'false'
       run: |
         mkdir ${{ env.build_dir }}
-        Get-ChildItem -Path "${{ github.workspace }}/source","${{ github.workspace }}/lib" -Recurse -File | ForEach-Object {
+        Get-ChildItem -Path `
+        "${{ github.workspace }}/build", `
+        "${{ github.workspace }}/source", `
+        "${{ github.workspace }}/lib" -Recurse -File | ForEach-Object {
           $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
           $lastWrite = $_.LastWriteTime.ToString("o")
           "$relativePath|$lastWrite"
