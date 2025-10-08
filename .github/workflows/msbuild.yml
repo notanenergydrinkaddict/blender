@@ -308,5 +308,4 @@ jobs:
       if: env.built_guard == 'false'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" --clobber
+      run: gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" --clobber
