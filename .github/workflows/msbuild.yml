@@ -136,7 +136,6 @@ jobs:
       run: |
         gh release download ${{ env.TAG_NAME }} -R ${{ env.src_repo }} -p *.7z
         7z x *.7z -y
-        echo "cache_hit=true" >> ${{ github.env }}
         rm *.7z
 
     - name: Manual clone lib
@@ -215,7 +214,7 @@ jobs:
         ls $out
 
     - name: Restore source timestamps on cache hit
-      if: env.cache_hit == 'true' && env.built_guard == 'false'
+      if: env.built_guard == 'false'
       run: |
         $timestampFile = "${{ env.timestamp_file }}"
         if (Test-Path $timestampFile) {
@@ -246,6 +245,7 @@ jobs:
           echo "Restored timestamps for $restored files ($skipped modified, $missing not found)"
         } else {
           echo "::warning title=Missing timestamp cache::No timestamp file found in cache"
+          echo "cache_hit=true" >> ${{ github.env }}
         }
 
     - name: CMake Generate
