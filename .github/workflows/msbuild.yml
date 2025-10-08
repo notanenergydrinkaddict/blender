@@ -265,9 +265,11 @@ jobs:
         rm "${{ env.timestamp_file }}"
         Get-ChildItem -Path `
         "${{ github.workspace }}/assets", `
+        "${{ github.workspace }}/extern", `
+        "${{ github.workspace }}/intern", `
+        "${{ github.workspace }}/source", `
         "${{ github.workspace }}/locale", `
         "${{ github.workspace }}/release", `
-        "${{ github.workspace }}/source", `
         "${{ github.workspace }}/lib", `
         "${{ github.workspace }}/build" `
         -Recurse -File | Where-Object {
@@ -308,4 +310,3 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" "${{ env.timestamp_file }}" --clobber
-
