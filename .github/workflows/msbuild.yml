@@ -117,6 +117,7 @@ jobs:
         else
         {
           echo "exists=false" >> ${{ github.output }}
+          echo "cache_hit=false" >> ${{ github.env }}
         }
         if ($result2)
         {
@@ -159,7 +160,7 @@ jobs:
         git lfs pull $origin_name
 
     - name: Save source timestamps before caching
-      if: steps.cache-primes.outputs.cache-hit == 'false' && env.built_guard == 'false'
+      if: env.cache_hit == 'false' && env.built_guard == 'false'
       run: |
         mkdir ${{ env.build_dir }}
         Get-ChildItem -Path `
@@ -248,7 +249,7 @@ jobs:
         }
 
     - name: CMake Generate
-      if: steps.cache-primes.outputs.cache-hit != 'true' && env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
+      if: env.cache_hit != 'true' && env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
       run: |
         cmake `
         -Wno-dev -G "Visual Studio 17 2022" `
