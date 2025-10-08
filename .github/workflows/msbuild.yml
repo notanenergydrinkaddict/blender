@@ -238,29 +238,6 @@ jobs:
           echo "cache_hit=false" >> ${{ github.env }}
         }
 
-    - name: Save source timestamps before caching
-      if: env.built_guard == 'false'
-      run: |
-        if (Test-Path "${{ env.timestamp_file }}") {
-          echo "Cache file exists."
-          return
-        }
-        mkdir ${{ env.build_dir }}
-        echo "" > "${{ env.timestamp_file }}"
-        $timestampFile = Convert-Path "${{ env.timestamp_file }}"
-        rm "${{ env.timestamp_file }}"
-        Get-ChildItem -Path `
-        "${{ github.workspace }}/source", `
-        "${{ github.workspace }}/lib" `
-        -Recurse -File | Where-Object {
-          $_.FullName -ne "$timestampFile"
-        } | ForEach-Object {
-          $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
-          $lastWrite = $_.LastWriteTime.ToString("o")
-          $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
-          "$relativePath|$lastWrite|$hash"
-        } | Out-File -Encoding utf8 "$timestampFile"
-
     - if: 0
       run: cat "${{ env.timestamp_file }}"
 
@@ -279,6 +256,25 @@ jobs:
       run: |
         cmake --build ${{ env.build_dir }} --target INSTALL `
         --config ${{ env.config }} -j $env:NUMBER_OF_PROCESSORS
+
+    - name: Save source timestamps before caching
+      if: env.built_guard == 'false'
+      run: |
+        echo "" > "${{ env.timestamp_file }}"
+        $timestampFile = Convert-Path "${{ env.timestamp_file }}"
+        rm "${{ env.timestamp_file }}"
+        Get-ChildItem -Path `
+        "${{ github.workspace }}/source", `
+        "${{ github.workspace }}/lib", `
+        "${{ github.workspace }}/build" `
+        -Recurse -File | Where-Object {
+          $_.FullName -ne "$timestampFile"
+        } | ForEach-Object {
+          $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
+          $lastWrite = $_.LastWriteTime.ToString("o")
+          $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+          "$relativePath|$lastWrite|$hash"
+        } | Out-File -Encoding utf8 "$timestampFile"
 
     - name: Zip
       if: env.built_guard == 'false'
@@ -308,5 +304,5 @@ jobs:
       if: env.built_guard == 'false'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" --clobber
+      run: gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" "${{ env.timestamp_file }}" --clobber
 
