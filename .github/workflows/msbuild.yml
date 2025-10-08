@@ -95,8 +95,6 @@ jobs:
         echo "BLENDER_VERSION_PATCH=$($result.BLENDER_VERSION_PATCH)" >> ${{ github.env }}
         echo "BLENDER_VERSION_CYCLE=$($result.BLENDER_VERSION_CYCLE)" >> ${{ github.env }}
         echo "TAG_NAME=$tag" >> ${{ github.env }}
-        echo "cache_path=${{ github.workspace }}\$tag.7z" >> ${{ github.env }}
-        echo "cache_path_short=$tag.7z" >> ${{ github.env }}
         echo "btag=blender-v$($result.BLENDER_VERSION)-release" >> ${{ github.env }}
         # evaluate post env variables
         echo "timestamp_file=${{ env.build_dir }}\timestamps.txt" >> ${{ github.env }}
@@ -136,8 +134,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        $f = "${{ env.cache_path_short }}"
-        gh release download ${{ env.TAG_NAME }} -R ${{ env.src_repo }} -p "$f"
+        $f0 = "${{ env.tag_name }}-lfs.7z"
+        $f1 = "${{ env.tag_name }}-lib-${{ runner.os }}-${{ matrix.arch }}.7z"
+        gh release download ${{ env.TAG_NAME }} -R ${{ env.src_repo }} -p `
+        "$f0" `
+        "$f1"
         7z x $f -y
         rm $f
 
@@ -178,20 +179,18 @@ jobs:
     - name: Create LFS archive
       if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
       run: |
-        $listFile = "archive_files.txt"
-        Get-ChildItem -Recurse lib -Exclude '.git' |
-            ForEach-Object {
-                $relative = $_.FullName.Substring((Get-Location).Path.Length + 1)
-                $relative
-            } | Out-File -Encoding utf8 $listFile
+        $lfsList = lfs.txt
         $lfsFiles = git lfs ls-files -n
         if ($lfsFiles.Count -gt 0)
         {
-            $lfsFiles | Out-File -Encoding utf8 -Append $listFile
+            $lfsFiles | Out-File -Encoding utf8 -Append $lfsList
         }
         7z a -spf -mx9 -mtm- `
-        "${{ env.cache_path }}" `
-        "@$listFile"
+        "${{ env.tag_name }}-lfs.7z" `
+        "@$lfsList"
+        7z a -mx9 -mtm- `
+        "${{ env.tag_name }}-lib-${{ runner.os }}-${{ matrix.arch }}.7z" `
+        "lib"
 
     - name: Upload LFS archive
       if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
@@ -199,7 +198,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create "${{ env.TAG_NAME }}" `
-        "${{ env.cache_path }}" `
+        "${{ env.tag_name }}-lfs.7z" `
+        "${{ env.tag_name }}-lib-${{ runner.os }}-${{ matrix.arch }}.7z" `
         --target "${{ GITHUB.SHA }}" -t "${{ env.TAG_NAME }}" `
         --prerelease
 
