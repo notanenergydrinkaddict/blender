@@ -38,7 +38,12 @@ jobs:
         $f = "7z25.01-zstd-x64.exe"
         curl -fLJO https://github.com/mcmilk/7-Zip-zstd/releases/download/v25.01-v1.5.7-R1/$f
         & ./$f /S
-        ls "C:\Program Files"
+        $pf = "C:\Program Files"
+        ls $pf
+        mv "$pf/7-Zip" "$pf/7-Zip1"
+        mv "$pf/7-Zip-Zstandard" "$pf/7-Zip"
+        # 
+        7z i
         exit 1
         $p = "C:\Program Files\7-Zip"
         $o = "a.tar.zst"
