@@ -169,7 +169,7 @@ jobs:
         Get-ChildItem -Path `
         "${{ github.workspace }}/build", `
         "${{ github.workspace }}/source", `
-        "${{ github.workspace }}/lib" -Recurse -File | ForEach-Object {
+        "${{ github.workspace }}/lib" -Recurse -File -Exclude "${{ env.timestamp_file }}" | ForEach-Object {
           $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
           $lastWrite = $_.LastWriteTime.ToString("o")
           $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
@@ -220,6 +220,7 @@ jobs:
     - name: Restore source timestamps on cache hit
       if: env.built_guard == 'false'
       run: |
+        # Fix any slashes in path, oops!
         $timestampFile = Convert-Path "${{ env.timestamp_file }}"
         if (Test-Path $timestampFile) {
           echo "Restoring timestamps from cache..."
