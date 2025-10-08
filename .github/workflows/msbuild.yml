@@ -36,13 +36,18 @@ jobs:
     - name: Setup 7zip zstd
       run: |
         $f = "Codecs-x64.7z"
+        $p = "C:\Program Files\7-Zip\Codecs"
+        $o = "a.tar.zst"
+        $t = "test"
         curl -fLJO https://github.com/mcmilk/7-Zip-zstd/releases/latest/download/$f
-        7z x $f "-oC:\Program Files\7-Zip\Codecs"
+        7z x $f "-o$p"
         7z i
+        7z a -m0=bcj -m1=zstd -mx11 $o $p
+        7z x $o "-o$t"
+        ls $t
 
     - name: Checkout
       uses: actions/checkout@main
-
     - name: Get version
       run: |
         function Get-BlenderVersion
