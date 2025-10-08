@@ -159,9 +159,13 @@ jobs:
         git lfs pull $origin_name
 
     - name: Save source timestamps before caching
-      if: env.cache_hit == 'false' && env.built_guard == 'false'
+      if: env.built_guard == 'false'
       run: |
         mkdir ${{ env.build_dir }}
+        if (Test-Path "${{ env.timestamp_file }}") {
+          echo "Cache file exists."
+          return
+        }
         Get-ChildItem -Path `
         "${{ github.workspace }}/build", `
         "${{ github.workspace }}/source", `
@@ -243,9 +247,10 @@ jobs:
             }
           }
           echo "Restored timestamps for $restored files ($skipped modified, $missing not found)"
+          echo "cache_hit=true" >> ${{ github.env }}
         } else {
           echo "::warning title=Missing timestamp cache::No timestamp file found in cache"
-          echo "cache_hit=true" >> ${{ github.env }}
+          echo "cache_hit=false" >> ${{ github.env }}
         }
 
     - name: CMake Generate
