@@ -241,11 +241,11 @@ jobs:
     - name: Save source timestamps before caching
       if: env.built_guard == 'false'
       run: |
-        mkdir ${{ env.build_dir }}
         if (Test-Path "${{ env.timestamp_file }}") {
           echo "Cache file exists."
           return
         }
+        mkdir ${{ env.build_dir }}
         echo "" > "${{ env.timestamp_file }}"
         $timestampFile = Convert-Path "${{ env.timestamp_file }}"
         rm "${{ env.timestamp_file }}"
