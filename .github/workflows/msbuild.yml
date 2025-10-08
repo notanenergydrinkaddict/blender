@@ -258,30 +258,6 @@ jobs:
         cmake --build ${{ env.build_dir }} --target INSTALL `
         --config ${{ env.config }} -j $env:NUMBER_OF_PROCESSORS
 
-    - name: Save source timestamps before caching
-      if: env.built_guard == 'false'
-      run: |
-        echo "" > "${{ env.timestamp_file }}"
-        $timestampFile = Convert-Path "${{ env.timestamp_file }}"
-        rm "${{ env.timestamp_file }}"
-        Get-ChildItem -Path `
-        "${{ github.workspace }}/assets", `
-        "${{ github.workspace }}/extern", `
-        "${{ github.workspace }}/intern", `
-        "${{ github.workspace }}/source", `
-        "${{ github.workspace }}/locale", `
-        "${{ github.workspace }}/release", `
-        "${{ github.workspace }}/lib", `
-        "${{ github.workspace }}/build" `
-        -Recurse -File | Where-Object {
-          $_.FullName -ne "$timestampFile"
-        } | ForEach-Object {
-          $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
-          $lastWrite = $_.LastWriteTime.ToString("o")
-          $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
-          "$relativePath|$lastWrite|$hash"
-        } | Out-File -Encoding utf8 "$timestampFile"
-
     - name: Zip
       if: env.built_guard == 'false'
       run: |
@@ -300,6 +276,29 @@ jobs:
         "${{ env.final_zip_path }}" `
         --target "${{ GITHUB.SHA }}" -t "${{ env.ver }}" `
         --prerelease
+
+    - name: Save source timestamps before caching
+      if: env.built_guard == 'false'
+      run: |
+        echo "" > "${{ env.timestamp_file }}"
+        $timestampFile = Convert-Path "${{ env.timestamp_file }}"
+        rm "${{ env.timestamp_file }}"
+        Get-ChildItem -Path `
+        "${{ github.workspace }}/assets", `
+        "${{ github.workspace }}/extern", `
+        "${{ github.workspace }}/intern", `
+        "${{ github.workspace }}/source", `
+        "${{ github.workspace }}/locale", `
+        "${{ github.workspace }}/release", `
+        "${{ github.workspace }}/lib" `
+        -Recurse -File | Where-Object {
+          $_.FullName -ne "$timestampFile"
+        } | ForEach-Object {
+          $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
+          $lastWrite = $_.LastWriteTime.ToString("o")
+          $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+          "$relativePath|$lastWrite|$hash"
+        } | Out-File -Encoding utf8 "$timestampFile"
 
     - name: Cache build files
       if: env.built_guard == 'false'
