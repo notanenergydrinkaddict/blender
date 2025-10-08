@@ -220,7 +220,7 @@ jobs:
     - name: Restore source timestamps on cache hit
       if: env.built_guard == 'false'
       run: |
-        $timestampFile = "${{ env.timestamp_file }}"
+        $timestampFile = Convert-Path "${{ env.timestamp_file }}"
         if (Test-Path $timestampFile) {
           echo "Restoring timestamps from cache..."
           $restored = 0
