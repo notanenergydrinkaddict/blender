@@ -250,7 +250,6 @@ jobs:
         $timestampFile = Convert-Path "${{ env.timestamp_file }}"
         rm "${{ env.timestamp_file }}"
         Get-ChildItem -Path `
-        "${{ github.workspace }}/build", `
         "${{ github.workspace }}/source", `
         "${{ github.workspace }}/lib" `
         -Recurse -File | Where-Object {
@@ -262,7 +261,7 @@ jobs:
           "$relativePath|$lastWrite|$hash"
         } | Out-File -Encoding utf8 "$timestampFile"
 
-    - if: 1
+    - if: 0
       run: cat "${{ env.timestamp_file }}"
 
     - name: CMake Generate
@@ -302,7 +301,8 @@ jobs:
 
     - name: Cache build files
       if: env.built_guard == 'false'
-      run: 7z a -mx9 -mtm- ${{ env.build_file }} build
+      # must keep timestamp
+      run: 7z a -mx9 ${{ env.build_file }} build
 
     - name: Upload build files
       if: env.built_guard == 'false'
