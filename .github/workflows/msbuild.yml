@@ -88,7 +88,7 @@ jobs:
         echo "build_ver=$bv" >> ${{ github.env }}
         echo "ver=$ver" >> ${{ github.env }}
         echo "final_zip_path=${{ github.workspace }}\$bv.${{ matrix.output_ext }}" >> ${{ github.env }}
-        $tag = "$($result.BLENDER_VERSION)-lfs-data"
+        $tag = "$($result.BLENDER_VERSION)-data"
         echo "BLENDER_VERSION=$($result.BLENDER_VERSION)" >> ${{ github.env }}
         echo "BLENDER_VERSION_MAJOR=$($result.BLENDER_VERSION_MAJOR)" >> ${{ github.env }}
         echo "BLENDER_VERSION_MINOR=$($result.BLENDER_VERSION_MINOR)" >> ${{ github.env }}
@@ -96,8 +96,14 @@ jobs:
         echo "BLENDER_VERSION_CYCLE=$($result.BLENDER_VERSION_CYCLE)" >> ${{ github.env }}
         echo "TAG_NAME=$tag" >> ${{ github.env }}
         echo "btag=blender-v$($result.BLENDER_VERSION)-release" >> ${{ github.env }}
-        # evaluate post env variables
+
+    - name: Evaluate post env variables
+      run: |
+        $m = "${{ runner.os }}-${{ matrix.arch }}"
         echo "timestamp_file=${{ env.build_dir }}\timestamps.txt" >> ${{ github.env }}
+        echo "lib_file=${{ env.tag_name }}-lib-$m.7z" >> ${{ github.env }}
+        echo "lfs_file=${{ env.tag_name }}-lfs.7z" >> ${{ github.env }}
+        echo "build_file=${{ env.tag_name }}-build-$m.7z"" >> ${{ github.env }}
 
     - name: Check if LFS and previous build tag exists
       id: check_tag
@@ -134,13 +140,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        $f0 = "${{ env.tag_name }}-lfs.7z"
-        $f1 = "${{ env.tag_name }}-lib-${{ runner.os }}-${{ matrix.arch }}.7z"
-        gh release download ${{ env.TAG_NAME }} -R ${{ env.src_repo }} -p `
-        "$f0" `
-        "$f1"
-        7z x $f -y
-        rm $f
+        gh release download ${{ env.TAG_NAME }} -R ${{ env.src_repo }} -p *.7z
+        7z x *.7z -y
+        rm *.7z
 
     - name: Manual clone lib
       if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
@@ -186,10 +188,10 @@ jobs:
             $lfsFiles | Out-File -Encoding utf8 -Append $lfsList
         }
         7z a -spf -mx9 -mtm- `
-        "${{ env.tag_name }}-lfs.7z" `
+        ${{ env.lfs_file }} `
         "@$lfsList"
         7z a -mx9 -mtm- `
-        "${{ env.tag_name }}-lib-${{ runner.os }}-${{ matrix.arch }}.7z" `
+        ${{ env.lib_file }} `
         "lib"
 
     - name: Upload LFS archive
@@ -198,8 +200,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create "${{ env.TAG_NAME }}" `
-        "${{ env.tag_name }}-lfs.7z" `
-        "${{ env.tag_name }}-lib-${{ runner.os }}-${{ matrix.arch }}.7z" `
+        "${{ env.lfs_file }}" `
+        "${{ env.lib_file }}" `
         --target "${{ GITHUB.SHA }}" -t "${{ env.TAG_NAME }}" `
         --prerelease
 
@@ -285,3 +287,14 @@ jobs:
         "${{ env.final_zip_path }}" `
         --target "${{ GITHUB.SHA }}" -t "${{ env.ver }}" `
         --prerelease
+
+    - name: Cache build files
+      if: env.built_guard == 'false'
+      run: 7z a -mx9 -mtm- ${{ env.build_file }} build
+
+    - name: Upload build files
+      if: env.built_guard == 'false'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release upload "${{ env.TAG_NAME }}" "${{ env.build_file }}" --clobber
