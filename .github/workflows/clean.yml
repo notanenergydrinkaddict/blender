@@ -1,0 +1,58 @@
+name: Cleanup Workflow Runs and Releases
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@main
+
+      - name: Delete all workflow runs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Fetching all workflow runs..."
+          
+          # Get all workflows
+          workflows=$(gh api repos/$REPO/actions/workflows --paginate | jq -r '.workflows[].id')
+          
+          for workflow_id in $workflows; do
+            echo "Processing workflow ID: $workflow_id"
+            
+            # Get all runs for this workflow
+            run_ids=$(gh api repos/$REPO/actions/workflows/$workflow_id/runs --paginate | jq -r '.workflow_runs[].id')
+            
+            for run_id in $run_ids; do
+              echo "Deleting run ID: $run_id"
+              gh api repos/$REPO/actions/runs/$run_id -X DELETE || echo "Failed to delete run $run_id"
+            done
+          done
+          
+          echo "All workflow runs deleted!"
+
+      - name: Delete all releases and tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching all releases..."
+          
+          # Get all release tags
+          tags=$(gh release list --limit 1000 | cut -f3)
+          
+          if [ -z "$tags" ]; then
+            echo "No releases found."
+          else
+            for tag in $tags; do
+              echo "Deleting release: $tag"
+              gh release delete "$tag" --yes --cleanup-tag || echo "Failed to delete release $tag"
+            done
+            echo "All releases and associated tags deleted!"
+          fi
