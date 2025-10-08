@@ -28,6 +28,7 @@ jobs:
       ext_data_repo: notanenergydrinkaddict/data
       config: Release
       OptixVer: 7.3.0
+      CudaVer: 12.9.0
     permissions:
       contents: write
     steps:
