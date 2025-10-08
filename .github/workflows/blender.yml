@@ -1,4 +1,4 @@
-name: Blender Windows
+name: Blender
 
 on:
   push:
