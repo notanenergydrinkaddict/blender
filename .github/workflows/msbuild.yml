@@ -182,6 +182,7 @@ jobs:
         7z a -m0=bcj -m1=zstd -mx11 `
         ${{ env.lib_file }} `
         "lib"
+        7z l -ttar ${{ env.lfs_file }}
 
     - name: Upload LFS archive
       if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'false' && github.repository == env.src_repo
