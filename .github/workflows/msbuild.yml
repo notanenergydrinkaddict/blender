@@ -110,9 +110,9 @@ jobs:
       run: |
         $m = "${{ runner.os }}-${{ matrix.arch }}"
         echo "timestamp_file=${{ env.build_dir }}\timestamps.txt" >> ${{ github.env }}
-        echo "lib_file=${{ env.tag_name }}-lib-$m.7z" >> ${{ github.env }}
-        echo "lfs_file=${{ env.tag_name }}-lfs.7z" >> ${{ github.env }}
-        echo "build_file=${{ env.tag_name }}-build-$m.7z" >> ${{ github.env }}
+        echo "lib_file=${{ env.tag_name }}-lib-$m.tar.zst" >> ${{ github.env }}
+        echo "lfs_file=${{ env.tag_name }}-lfs.tar.zst" >> ${{ github.env }}
+        echo "build_file=${{ env.tag_name }}-build-$m.tar.zst" >> ${{ github.env }}
 
     - name: Check if LFS and previous build tag exists
       id: check_tag
@@ -176,10 +176,10 @@ jobs:
         {
             $lfsFiles | Out-File -Encoding utf8 -Append $lfsList
         }
-        7z a -spf -mx9 -mtm- `
+        7z a -spf -m0=bcj -m1=zstd -mx11 -mtm- `
         ${{ env.lfs_file }} `
         "@$lfsList"
-        7z a -mx9 -mtm- `
+        7z a -m0=bcj -m1=zstd -mx11 -mtm- `
         ${{ env.lib_file }} `
         "lib"
 
