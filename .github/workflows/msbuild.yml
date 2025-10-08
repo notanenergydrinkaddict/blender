@@ -44,15 +44,13 @@ jobs:
         mv "$pf/7-Zip-Zstandard" "$pf/7-Zip"
         # 
         7z i
-        exit 1
         $p = "C:\Program Files\7-Zip"
         $o = "a.tar.zst"
         $t = "test"
-        # 7z x $f "-o$p"
-        7z i
         7z a -m0=zstd -mx11 $o $p
         7z x $o "-o$t"
         ls $t
+        exit 1
 
     - name: Checkout
       uses: actions/checkout@main
