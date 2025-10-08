@@ -45,7 +45,7 @@ jobs:
         # 
         7z i
         $p = "C:\Program Files\7-Zip"
-        $o = "a.zst"
+        $o = "a.7z"
         $t = "test"
         7z a -mx11 $o $p
         7z x $o "-o$t"
