@@ -234,7 +234,10 @@ jobs:
               $cachedHash = $parts[2]
               
               if (Test-Path $filePath) {
-                $currentHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash
+                # ignore cache file
+                if ($filePath -ine $timestampFile) {
+                  $currentHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash
+                }
                 if ($currentHash -eq $cachedHash) {
                   (Get-Item $filePath).LastWriteTime = $timestamp
                   $restored++
