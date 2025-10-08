@@ -262,6 +262,9 @@ jobs:
           "$relativePath|$lastWrite|$hash"
         } | Out-File -Encoding utf8 "$timestampFile"
 
+    - if: 1
+      run: cat "${{ env.timestamp_file }}"
+
     - name: CMake Generate
       if: env.cache_hit != 'true' && env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
       run: |
