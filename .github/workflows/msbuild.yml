@@ -166,7 +166,9 @@ jobs:
           echo "Cache file exists."
           return
         }
+        echo "" > "${{ env.timestamp_file }}"
         $timestampFile = Convert-Path "${{ env.timestamp_file }}"
+        rm "${{ env.timestamp_file }}"
         Get-ChildItem -Path `
         "${{ github.workspace }}/build", `
         "${{ github.workspace }}/source", `
