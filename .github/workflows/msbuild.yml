@@ -128,13 +128,6 @@ jobs:
           echo "built_guard=false" >> ${{ github.env }}
         }
 
-    - name: Cache Primes
-      id: cache-primes
-      uses: actions/cache@main
-      with:
-        path: ${{ env.build_dir }}
-        key: ${{ env.btag }}-${{ github.job }}-${{ matrix.os }}-${{ matrix.arch }}
-
     - name: Download lib from cache (tag)
       if: env.built_guard == 'false' && steps.check_tag.outputs.exists == 'true' || github.repository != env.src_repo
       env:
