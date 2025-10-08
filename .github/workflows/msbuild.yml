@@ -171,7 +171,8 @@ jobs:
         "${{ github.workspace }}/lib" -Recurse -File | ForEach-Object {
           $relativePath = $_.FullName.Substring("${{ github.workspace }}".Length + 1)
           $lastWrite = $_.LastWriteTime.ToString("o")
-          "$relativePath|$lastWrite"
+          $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+          "$relativePath|$lastWrite|$hash"
         } | Out-File -Encoding utf8 "${{ env.timestamp_file }}"
 
     - name: Create LFS archive
@@ -223,21 +224,29 @@ jobs:
         if (Test-Path $timestampFile) {
           echo "Restoring timestamps from cache..."
           $restored = 0
+          $skipped = 0
           $missing = 0
           Get-Content $timestampFile | ForEach-Object {
-            $parts = $_ -split '\|', 2
-            if ($parts.Count -eq 2) {
+            $parts = $_ -split '\|', 3
+            if ($parts.Count -eq 3) {
               $filePath = Join-Path "${{ github.workspace }}" $parts[0]
               $timestamp = [DateTime]::Parse($parts[1])
+              $cachedHash = $parts[2]
+              
               if (Test-Path $filePath) {
-                (Get-Item $filePath).LastWriteTime = $timestamp
-                $restored++
+                $currentHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash
+                if ($currentHash -eq $cachedHash) {
+                  (Get-Item $filePath).LastWriteTime = $timestamp
+                  $restored++
+                } else {
+                  $skipped++
+                }
               } else {
                 $missing++
               }
             }
           }
-          echo "Restored timestamps for $restored files ($missing files not found)"
+          echo "Restored timestamps for $restored files ($skipped modified, $missing not found)"
         } else {
           echo "::warning title=Missing timestamp cache::No timestamp file found in cache"
         }
