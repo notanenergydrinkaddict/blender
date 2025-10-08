@@ -42,7 +42,7 @@ jobs:
         curl -fLJO https://github.com/mcmilk/7-Zip-zstd/releases/latest/download/$f
         7z x $f "-o$p"
         7z i
-        7z a -m0=bcj -m1=zstd -mx11 $o $p
+        7z a -m0=zstd -mx11 $o $p
         7z x $o "-o$t"
         ls $t
 
@@ -181,10 +181,10 @@ jobs:
         {
             $lfsFiles | Out-File -Encoding utf8 -Append $lfsList
         }
-        7z a -spf -m0=bcj -m1=zstd -mx11 `
+        7z a -spf -m0 -mx11 `
         ${{ env.lfs_file }} `
         "@$lfsList"
-        7z a -m0=bcj -m1=zstd -mx11 `
+        7z a -m0 -mx11 `
         ${{ env.lib_file }} `
         "lib"
         7z l -ttar ${{ env.lfs_file }}
