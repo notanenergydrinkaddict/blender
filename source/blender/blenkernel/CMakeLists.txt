@@ -549,9 +549,9 @@ set(SRC
 )
 
 if(MSVC_CLANG)
-    message(STATUS "Enabling _USE_MATH_DEFINES for ClangCL")
-    set_source_files_properties(intern/ocean_spectrum.cc PROPERTIES COMPILE_FLAGS -D_USE_MATH_DEFINES)
-  endif()
+  # message(STATUS "Enabling _USE_MATH_DEFINES for ClangCL")
+  set_source_files_properties(intern/ocean_spectrum.cc PROPERTIES COMPILE_FLAGS -D_USE_MATH_DEFINES)
+endif()
 
 set(LIB
   PRIVATE bf::animrig
