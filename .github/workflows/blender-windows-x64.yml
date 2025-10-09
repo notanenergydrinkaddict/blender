@@ -302,7 +302,6 @@ jobs:
         $timestampFile = Convert-Path "${{ env.timestamp_file }}"
         rm "${{ env.timestamp_file }}"
         Get-ChildItem -Path `
-        "${{ github.workspace }}/assets", `
         "${{ github.workspace }}/extern", `
         "${{ github.workspace }}/intern", `
         "${{ github.workspace }}/source", `
