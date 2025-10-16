@@ -204,7 +204,7 @@ jobs:
         --target "${{ GITHUB.SHA }}" -t "${{ env.TAG_NAME }}" `
         --prerelease
 
-    - name: Setup Nvidia SDK
+    - name: Setup External SDK
       if: env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -243,6 +243,15 @@ jobs:
             -File "$f.7z" `
             -ExtractPath "$exp"
         echo "CUDA_PATH=$exp" >> ${{ github.env }}
+        $f = "5.5"
+        $pf = "AMD-HIP-SDK"
+        $exp = "${{ github.workspace }}/sdk/hip"
+        Download-And-Extract `
+            -Tag "$pf" `
+            -File "$f.7z" `
+            -ExtractPath "$exp"
+        echo "HIP_PATH=$exp" >> ${{ github.env }}
+        echo "HIPRT_ROOT_DIR=$exp" >> ${{ github.env }}
 
     - name: Restore source timestamps on cache hit
       if: env.built_guard == 'false'
