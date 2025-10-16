@@ -623,7 +623,7 @@ if(WITH_CYCLES_HIP_BINARIES AND WITH_CYCLES_DEVICE_HIP)
       set(hip_command ${CMAKE_COMMAND})
       set(hip_flags
         -E env "HIP_PATH=${HIP_ROOT_DIR}"
-        ${HIP_HIPCC_EXECUTABLE}.bat)
+        ${HIP_HIPCC_EXECUTABLE}.bin.exe)
     else()
       set(hip_command ${HIP_HIPCC_EXECUTABLE})
       set(hip_flags)
@@ -665,6 +665,9 @@ if(WITH_CYCLES_HIP_BINARIES AND WITH_CYCLES_DEVICE_HIP)
       set(hip_flags ${hip_flags} -D WITH_CYCLES_DEBUG)
     endif()
 
+    message(STATUS "hip_command ${hip_command}")
+    message(STATUS "hip_flags ${hip_flags}")
+    
     add_custom_command(
       OUTPUT ${hip_file}
       COMMAND ${hip_command} ${hip_flags}
@@ -703,7 +706,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
     set(hiprt_compile_command ${CMAKE_COMMAND})
     set(hiprt_compile_flags
       -E env "HIP_PATH=${HIP_ROOT_DIR}"
-      ${HIP_HIPCC_EXECUTABLE}.bat)
+      ${HIP_HIPCC_EXECUTABLE}.bin.exe)
   else()
     set(hiprt_compile_command ${HIP_HIPCC_EXECUTABLE})
     set(hiprt_compile_flags)
@@ -737,6 +740,7 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
   if(WITH_CYCLES_DEBUG)
     set(hiprt_compile_flags ${hiprt_compile_flags} -D WITH_CYCLES_DEBUG)
   endif()
+  
   add_custom_command(
     OUTPUT  ${bitcode_file}
     COMMAND ${hiprt_compile_command} ${hiprt_compile_flags}
