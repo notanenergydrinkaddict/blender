@@ -23,9 +23,14 @@ endif()
 
 set(_hip_SEARCH_DIRS
   ${HIP_ROOT_DIR}
-  /opt/rocm
-  /opt/rocm/hip
 )
+
+if(NOT WIN32)
+  list(APPEND _hip_SEARCH_DIRS
+    /opt/rocm
+    /opt/rocm/hip
+  )
+endif()
 
 find_program(HIP_HIPCC_EXECUTABLE
   NAMES
@@ -56,7 +61,7 @@ if(HIP_HIPCC_EXECUTABLE)
   set(HIP_VERSION_PATCH 0)
 
   if(WIN32)
-    set(_hipcc_executable ${HIP_HIPCC_EXECUTABLE}.bat)
+    set(_hipcc_executable ${HIP_HIPCC_EXECUTABLE}.bin.exe)
   else()
     set(_hipcc_executable ${HIP_HIPCC_EXECUTABLE})
   endif()
