@@ -287,13 +287,17 @@ jobs:
       run: cat "${{ env.timestamp_file }}"
 
     - name: CMake Generate
-      if: env.cache_hit != 'true' && env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
+      if: env.built_guard == 'false' && runner.os == 'Windows' && matrix.arch == 'amd64'
       run: |
         cmake `
+        --fresh `
         -Wno-dev -G "Visual Studio 17 2022" `
         -T ClangCL `
         -S . -B ${{ env.build_dir }} `
         -DWITH_WINDOWS_EXTERNAL_MANIFEST=ON `
+        -DWITH_CYCLES_CUDA_BINARIES=ON `
+        -DWITH_CYCLES_DEVICE_OPTIX=ON `
+        -DWITH_OPTIX=ON `
         -DWITH_CLANG=ON
 
     - name: CMake build
